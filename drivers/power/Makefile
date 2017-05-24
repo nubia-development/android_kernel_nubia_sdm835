@@ -77,3 +77,7 @@ obj-$(CONFIG_POWER_SUPPLY)	+= supply/
 #Begin [0016004715 add the kernel power code,20180316]
 obj-$(CONFIG_ZTEMT_POWER_DEBUG)	+= ztemt_power_debug/
 #End   [0016004715 add the kernel power code,20180316]
+
+# TODO: remove me b/62057517
+subdir-ccflags-y += \
+	-Wno-tentative-definition-incomplete-type

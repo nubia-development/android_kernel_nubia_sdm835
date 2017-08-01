@@ -19,3 +19,7 @@ endif
 ifeq ($(CONFIG_NEO_EXTERNAL_FG_SUPPORT),y)
 	obj-$(CONFIG_NEO_BQ27520_BATTERY)	+= bq27520-battery.o
 endif
+
+#TODO: remove me b/62058353
+subdir-ccflags-y += \
+	-Wno-duplicate-decl-specifier

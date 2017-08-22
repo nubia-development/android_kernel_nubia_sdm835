@@ -62,24 +62,13 @@ scm_version()
 				printf '%s%s' -g "`git show-ref -s --abbrev --tags $atag 2>/dev/null`"
 			fi
 		else
-
-			# If only the short version is requested, don't bother
+                        # If only the short version is requested, don't bother
 			# running further git commands
 			if $short; then
 				echo "+"
 				return
 			fi
-			# If we are past a tagged commit (like
-			# "v2.6.30-rc5-302-g72357d5"), we pretty print it and
-			# include the hash of any new tag on top.
-			if atag="`git describe 2>/dev/null`"; then
-				tag="`git describe --abbrev=0 2>/dev/null`"
-				commit="`echo "$atag" | awk -F- '{printf("-%05d-%s", $(NF-1),$(NF))}'`"
-				printf '%s%s%s' -g "`git show-ref -s --abbrev --tags $tag 2>/dev/null`" $commit
-			# If we don't have a tag at all we print -g{commitish}.
-			else
-				printf '%s%s' -g $head
-			fi
+
 		fi
 
 		# Is this git on svn?
@@ -87,18 +76,8 @@ scm_version()
 			printf -- '-svn%s' "`git svn find-rev $head`"
 		fi
 
-		# Check for uncommitted changes.
-		# First, with git-status, but --no-optional-locks is only
-		# supported in git >= 2.14, so fall back to git-diff-index if
-		# it fails. Note that git-diff-index does not refresh the
-		# index, so it may give misleading results. See
-		# git-update-index(1), git-diff-index(1), and git-status(1).
-		if {
-			git --no-optional-locks status -uno --porcelain 2>/dev/null ||
-			git diff-index --name-only HEAD
-		} | grep -qvE '^(.. )?scripts/package'; then
-			printf '%s' -dirty
-		fi
+		# Update index only on r/w media
+		[ -w . ] && git update-index --refresh --unmerged > /dev/null
 
 		# All done with git
 		return
@@ -117,12 +96,6 @@ scm_version()
 				printf '%s%s' -hg "$id"
 			fi
 		fi
-
-		# Are there uncommitted changes?
-		# These are represented by + after the changeset id.
-		case "$hgid" in
-			*+|*+\ *) printf '%s' -dirty ;;
-		esac
 
 		# All done with mercurial
 		return
@@ -190,7 +163,6 @@ else
 	# LOCALVERSION= is not specified
 	if test "${LOCALVERSION+set}" != "set"; then
 		scm=$(scm_version --short)
-		res="$res${scm:++}"
 	fi
 fi
 

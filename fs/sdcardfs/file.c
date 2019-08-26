@@ -23,6 +23,12 @@
 #include <linux/backing-dev.h>
 #endif
 
+//Nubia FileObserver Begin
+#ifdef ENABLE_FILE_OBSERVER
+#include "observer.h"
+#endif
+//Nubia FileObserver End
+
 static ssize_t sdcardfs_read(struct file *file, char __user *buf,
 			   size_t count, loff_t *ppos)
 {
@@ -80,6 +86,12 @@ static ssize_t sdcardfs_write(struct file *file, const char __user *buf,
 		fsstack_copy_attr_times(inode, file_inode(lower_file));
 		if (sizeof(loff_t) > sizeof(long))
 			inode_unlock(inode);
+
+		//Nubia FileObserver Begin
+		#ifdef ENABLE_FILE_OBSERVER
+		sdcardfs_post_file_write(file);
+		#endif
+		//Nubia FileObserver End
 	}
 
 	return err;
@@ -111,6 +123,14 @@ static long sdcardfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 	struct dentry *dentry = file->f_path.dentry;
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 
+//Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+	if(sdcardfs_do_fileobserver_ioctl(file, cmd, arg)) {
+		return 0;
+	}
+	#endif
+//Nubia FileObserver End
+
 	lower_file = sdcardfs_lower_file(file);
 
 	/* XXX: use vfs_ioctl if/when VFS exports it */
@@ -118,7 +138,11 @@ static long sdcardfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 		goto out;
 
 	/* save current_cred and override it */
-	OVERRIDE_CRED(sbi, saved_cred, SDCARDFS_I(file_inode(file)));
+	saved_cred = override_fsids(sbi, SDCARDFS_I(file_inode(file))->data);
+	if (!saved_cred) {
+		err = -ENOMEM;
+		goto out;
+	}
 
 	if (lower_file->f_op->unlocked_ioctl)
 		err = lower_file->f_op->unlocked_ioctl(lower_file, cmd, arg);
@@ -127,7 +151,7 @@ static long sdcardfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 	if (!err)
 		sdcardfs_copy_and_fix_attrs(file_inode(file),
 				      file_inode(lower_file));
-	REVERT_CRED(saved_cred);
+	revert_fsids(saved_cred);
 out:
 	return err;
 }
@@ -142,6 +166,14 @@ static long sdcardfs_compat_ioctl(struct file *file, unsigned int cmd,
 	struct dentry *dentry = file->f_path.dentry;
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 
+//Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+	if(sdcardfs_do_fileobserver_ioctl(file, cmd, arg)) {
+		return 0;
+	}
+	#endif
+//Nubia FileObserver End
+
 	lower_file = sdcardfs_lower_file(file);
 
 	/* XXX: use vfs_ioctl if/when VFS exports it */
@@ -149,12 +181,16 @@ static long sdcardfs_compat_ioctl(struct file *file, unsigned int cmd,
 		goto out;
 
 	/* save current_cred and override it */
-	OVERRIDE_CRED(sbi, saved_cred, SDCARDFS_I(file_inode(file)));
+	saved_cred = override_fsids(sbi, SDCARDFS_I(file_inode(file))->data);
+	if (!saved_cred) {
+		err = -ENOMEM;
+		goto out;
+	}
 
 	if (lower_file->f_op->compat_ioctl)
 		err = lower_file->f_op->compat_ioctl(lower_file, cmd, arg);
 
-	REVERT_CRED(saved_cred);
+	revert_fsids(saved_cred);
 out:
 	return err;
 }
@@ -241,7 +277,11 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	}
 
 	/* save current_cred and override it */
-	OVERRIDE_CRED(sbi, saved_cred, SDCARDFS_I(inode));
+	saved_cred = override_fsids(sbi, SDCARDFS_I(inode)->data);
+	if (!saved_cred) {
+		err = -ENOMEM;
+		goto out_err;
+	}
 
 	file->private_data =
 		kzalloc(sizeof(struct sdcardfs_file_info), GFP_KERNEL);
@@ -271,7 +311,7 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 		sdcardfs_copy_and_fix_attrs(inode, sdcardfs_lower_inode(inode));
 
 out_revert_cred:
-	REVERT_CRED(saved_cred);
+	revert_fsids(saved_cred);
 out_err:
 	dput(parent);
 	return err;
@@ -301,6 +341,12 @@ static int sdcardfs_file_release(struct inode *inode, struct file *file)
 		sdcardfs_set_lower_file(file, NULL);
 		fput(lower_file);
 	}
+
+	//Nubia FileObserver Begin
+	#ifdef ENABLE_FILE_OBSERVER
+	sdcardfs_post_file_release(inode, file);
+	#endif
+	//Nubia FileObserver End
 
 	kfree(SDCARDFS_F(file));
 	return 0;

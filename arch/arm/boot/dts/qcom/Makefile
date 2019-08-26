@@ -295,7 +295,8 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-rumi.dtb \
 	sdm455-cdp.dtb
 
 ifeq ($(CONFIG_ARM64),y)
-always          := $(dtb-y)
+#always          := $(dtb-y)
+always          := $(NUBIA_DTS_NAME)
 always          += $(dtbo-y)
 subdir-y        := $(dts-dirs)
 else

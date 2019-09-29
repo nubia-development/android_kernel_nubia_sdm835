@@ -769,3 +769,6 @@ CONFIG_WLAN_FEATURE_FILS=y
 
 # Enable BFQ ioscheduler -- Add by Cyborg2017(Cyborg Yang) [20190903]
 CONFIG_IOSCHED_BFQ=y
+
+# Enable exfat support  -- Add by Cyborg2017(Cyborg Yang) [20190903]
+CONFIG_EXFAT_FS=y

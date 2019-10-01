@@ -306,7 +306,7 @@ out:
 //nubia add start
 #ifdef CONFIG_NUBIA_F2FS_TRIM_STAT
     if (!strcmp(a->attr.name, "trim_stat"))
-		f2fs_msg(sbi->sb, KERN_WARNING, "want to set trim_stat.");
+		f2fs_err(sbi, "want to set trim_stat.");
 #endif
 //nubia add end
 
